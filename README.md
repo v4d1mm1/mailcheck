@@ -1,2 +1,2 @@
 # mailcheck
-Check email address
+Simple script to check email address.
