@@ -1,14 +1,13 @@
 import smtplib
 import dns.resolver
 import sys
-import logging
+from logging_setup import logging
+from logging import config
+from pathlib import Path
 
 HELO_FROM_DOMAIN = 'mailbox.org'
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s: %(message)s', datefmt='%Y-%m-%d %H:%M:%S') 
-
 def resolve_mx_record(domain):
-    mx_record = ''
     try:
         records = dns.resolver.resolve(domain, 'MX')
     except Exception as ex:
@@ -25,13 +24,29 @@ def check_mail(email_address, mx_record):
         server.connect(mx_record)
         code, message = server.helo(HELO_FROM_DOMAIN)    
     except Exception as ex:
-        print(logging.error(ex)) 
+        exit(logging.error(ex))
     server.mail('')
     code, message = server.rcpt(email_address)
-    logging.info(f'Checked {email_address} on {domain}. Response code: {code}. Message: {message}')
+    logging.info(f'Checked {email_address}. Response code: {code}. Message: {message}')
+    file_logger.info(f'Checked {email_address}. Response code: {code}. Message: {message}')
     return code, message
-    
+
+   
 if __name__ == "__main__":
+    # Apply logging config file
+    try:
+        script_dir = Path(__file__).resolve().parent
+        file_path = script_dir / "logging.config"
+
+        with open(file_path, 'r') as file:
+            config.fileConfig(file)
+
+    except FileNotFoundError:
+        logging.error('Logging config file was not found in the same directory as the script')
+
+    file_logger = logging.getLogger('customLogger')
+
+    # Get email address either from sys arg or input
     try:
         email_address = sys.argv[1]
     except Exception as ex:
@@ -41,6 +56,7 @@ if __name__ == "__main__":
         logging.info(f'Checking {email_address}...')
     else:
         sys.exit(logging.error('Email entered incorrectly'))    
-  
+
     mx_record = resolve_mx_record(domain)
     check_mail(email_address, mx_record)
+
